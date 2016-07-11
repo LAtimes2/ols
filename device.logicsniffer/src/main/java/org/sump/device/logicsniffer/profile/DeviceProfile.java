@@ -90,10 +90,14 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
   public static final String DEVICE_SUPPORTS_DDR = "device.supports_ddr";
   /** Supported sample rates in Hertz, separated by comma's */
   public static final String DEVICE_SAMPLERATES = "device.samplerates";
+  /** LAtimes - Default sample rate in Hertz */
+  public static final String DEVICE_DEFAULT_SAMPLERATE = "device.defaultsamplerate";
   /** What capture clocks are supported */
   public static final String DEVICE_CAPTURECLOCK = "device.captureclock";
   /** The supported capture sizes, in bytes */
   public static final String DEVICE_CAPTURESIZES = "device.capturesizes";
+  /** LAtimes - Default capture size */
+  public static final String DEVICE_DEFAULT_CAPTURESIZE = "device.defaultcapturesize";
   /** Whether or not the noise filter is supported */
   public static final String DEVICE_FEATURE_NOISEFILTER = "device.feature.noisefilter";
   /** Whether or not Run-Length encoding is supported */
@@ -115,8 +119,17 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
   public static final String DEVICE_CHANNEL_GROUPS = "device.channel.groups";
   /** Whether the capture size is limited by the enabled channel groups */
   public static final String DEVICE_CAPTURESIZE_BOUND = "device.capturesize.bound";
+  /** LAtimes - Whether the capture size is limited by the enabled channels */
+  public static final String DEVICE_CAPTURESIZE_CHANNEL_BOUND = "device.capturesize.channelbound";
   /** What channel numbering schemes are supported by the device. */
   public static final String DEVICE_CHANNEL_NUMBERING_SCHEMES = "device.channel.numberingschemes";
+  // LAtimes - new
+  /** Linux system command to load firmware */
+  public static final String DEVICE_FIRMWARE_COMMAND_LINUX = "device.firmwareCommand.linux";
+  /** MacOS system command to load firmware */
+  public static final String DEVICE_FIRMWARE_COMMAND_MACOS = "device.firmwareCommand.macos";
+  /** Windows system command to load firmware */
+  public static final String DEVICE_FIRMWARE_COMMAND_WINDOWS = "device.firmwareCommand.windows";
   /**
    * Is a delay after opening the port and device detection needed? (0 = no
    * delay, >0 = delay in milliseconds)
@@ -155,6 +168,10 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
       DEVICE_DIVIDER_CLOCKSPEED } );
   private static final List<String> IGNORED_KEYS = Arrays.asList( new String[] { FELIX_SERVICE_PID,
       FELIX_SERVICE_FACTORY_PID } );
+  // LAtimes - add optional keys
+  private static final List<String> OPTIONAL_KEYS = Arrays.asList( new String[] { DEVICE_DEFAULT_SAMPLERATE,
+	  DEVICE_DEFAULT_CAPTURESIZE, DEVICE_CAPTURESIZE_CHANNEL_BOUND, DEVICE_FIRMWARE_COMMAND_LINUX,
+	  DEVICE_FIRMWARE_COMMAND_MACOS, DEVICE_FIRMWARE_COMMAND_WINDOWS } );
 
   private static final Logger LOG = Logger.getLogger( DeviceProfile.class.getName() );
 
@@ -327,6 +344,46 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
     return Integer.parseInt( value );
   }
 
+  // LAtimes - new property
+  /**
+   * Returns the default sample rate when profile is initially selected.
+   *
+   * @return a rate, or null if not in the profile
+   */
+  public Integer getDefaultSampleRate()
+  {
+    final String value = this.properties.get( DEVICE_DEFAULT_SAMPLERATE );
+
+    if ( value == null )
+    {
+      return null;
+    }
+    else
+    {
+      return Integer.parseInt( value );
+    }
+  }
+
+  // LAtimes - new property
+  /**
+   * Returns the default capture size when profile is initially selected.
+   *
+   * @return a size, or null if not in the profile
+   */
+  public Integer getDefaultCaptureSize()
+  {
+    final String value = this.properties.get( DEVICE_DEFAULT_CAPTURESIZE );
+
+    if ( value == null )
+    {
+      return null;
+    }
+    else
+    {
+      return Integer.parseInt( value );
+    }
+  }
+  
   /**
    * Returns the description of the device this profile denotes.
    *
@@ -377,6 +434,66 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
     return DeviceInterface.valueOf( value );
   }
 
+  // LAtimes - new functions
+  /**
+   * Returns the command for loading firmware, based on OS.
+   *
+   * @return a string command or empty string, never <code>null</code>.
+   */
+  public String getFirmwareCommand()
+  {
+    String result = "";
+
+    final HostInfo hostInfo = HostUtils.getHostInfo();
+    if ( hostInfo.isLinux() )
+    {
+      result = getLinuxFirmwareCommand();
+    }
+    else if ( hostInfo.isMacOS() )
+    {
+      result = getMacOSFirmwareCommand();
+    }
+    else if ( hostInfo.isWindows() )
+    {
+      result = getWindowsFirmwareCommand();
+    }
+ 
+    return result;
+  }
+
+  /**
+   * Returns the command for loading firmware on Linux.
+   *
+   * @return a string command, never <code>null</code>.
+   */
+  public String getLinuxFirmwareCommand()
+  {
+    final String result = this.properties.get( DEVICE_FIRMWARE_COMMAND_LINUX );
+    return result == null ? "" : result;
+  }
+
+  /**
+   * Returns the command for loading firmware on MacOS.
+   *
+   * @return a string command, never <code>null</code>.
+   */
+  public String getMacOSFirmwareCommand()
+  {
+    final String result = this.properties.get( DEVICE_FIRMWARE_COMMAND_MACOS );
+    return result == null ? "" : result;
+  }
+
+  /**
+   * Returns the command for loading firmware on Windows.
+   *
+   * @return a string command, never <code>null</code>.
+   */
+  public String getWindowsFirmwareCommand()
+  {
+    final String result = this.properties.get( DEVICE_FIRMWARE_COMMAND_WINDOWS );
+    return result == null ? "" : result;
+  }
+
   /**
    * Returns the maximum capture size for the given number of <em>enabled</em>
    * channel groups.
@@ -395,7 +512,7 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
    * @see #isCaptureSizeBoundToEnabledChannels()
    * @see #getChannelGroupCount()
    */
-  public int getMaximumCaptureSizeFor( final int aChannelGroups )
+  public int getMaximumCaptureSizeFor( final int aChannelGroups, final int aNumChannels )
   {
     final Integer[] sizes = getCaptureSizes();
     if ( ( sizes == null ) || ( sizes.length == 0 ) || ( aChannelGroups == 0 ) )
@@ -407,6 +524,24 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
     if ( isCaptureSizeBoundToEnabledChannels() )
     {
       int indication = maxSize / aChannelGroups;
+
+      // Issue #58: Search the best matching value...
+      Integer result = null;
+      for ( int i = sizes.length - 1; i >= 0; i-- )
+      {
+        if ( sizes[i].compareTo( Integer.valueOf( indication ) ) <= 0 )
+        {
+          result = sizes[i];
+        }
+      }
+
+      return ( result == null ) ? indication : result.intValue();
+    }
+
+    // LAtimes - limit based on number of channels selected
+    if ( isCaptureSizeBoundToEnabledChannelsLessThan8() )
+    {
+      int indication = maxSize / aNumChannels;
 
       // Issue #58: Search the best matching value...
       Integer result = null;
@@ -519,6 +654,20 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
   public boolean isCaptureSizeBoundToEnabledChannels()
   {
     final String value = this.properties.get( DEVICE_CAPTURESIZE_BOUND );
+    return Boolean.parseBoolean( value );
+  }
+
+  // LAtimes
+  /**
+   * Returns whether or not the capture size is bound to the number of channels less than 8.
+   * e.g. 4 channels can record twice as much as 8 channels, 2 twice as much as 4
+   *
+   * @return <code>true</code> if the capture size is bound to the number of
+   *         channels, <code>false</code> otherwise.
+   */
+  public boolean isCaptureSizeBoundToEnabledChannelsLessThan8()
+  {
+    final String value = this.properties.get( DEVICE_CAPTURESIZE_CHANNEL_BOUND );
     return Boolean.parseBoolean( value );
   }
 
@@ -655,7 +804,8 @@ public final class DeviceProfile implements Cloneable, Comparable<DeviceProfile>
     while ( keys.hasMoreElements() )
     {
       final String key = ( String )keys.nextElement();
-      if ( !KNOWN_KEYS.contains( key ) && !IGNORED_KEYS.contains( key ) )
+      // LAtimes - add optional keys
+      if ( !KNOWN_KEYS.contains( key ) && !IGNORED_KEYS.contains( key ) && !OPTIONAL_KEYS.contains( key ) )
       {
         LOG.log( Level.WARNING, "Unknown/unsupported profile key: " + key );
         continue;

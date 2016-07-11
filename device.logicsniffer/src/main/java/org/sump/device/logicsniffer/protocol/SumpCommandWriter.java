@@ -49,6 +49,11 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
   private static final int SETSIZE = 0x81;
   /** set flags */
   private static final int SETFLAGS = 0x82;
+  // LAtimes
+  /** set sample size (32 bits) */
+  private static final int SETSAMPLESIZE = 0x83;
+  /** set delay size (32 bits) */
+  private static final int SETDELAYSIZE = 0x84;
 
   /** demultiplex */
   public static final int FLAG_DEMUX = 0x00000001;
@@ -205,6 +210,10 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
     // set the sampling frequency...
     sendCommand( SETDIVIDER, this.config.getDivider() );
 
+    // LAtimes
+    // 0x3fffc = 255Kb = the maximum size supported by the original SUMP device
+    final int maxSize16Bits = 0x3fffc;
+
     final int stopCounter = configureTriggers();
     final int readCounter = this.config.getReadCounter();
 
@@ -213,7 +222,7 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
     {
       // 0x7fff8 = 511Kb = the maximum size supported by the original SUMP
       // device when using the demultiplexer...
-      final int maxSize = 0x7fff8;
+      final int maxSize = maxSize16Bits * 2;
       size = ( ( stopCounter & maxSize ) << 13 ) | ( ( ( readCounter & maxSize ) >> 3 ) - 1 );
       // A better approximation of "(readCounter - stopCounter) - 2". This also
       // solves issue #31...
@@ -221,9 +230,7 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
     }
     else
     {
-      // 0x3fffc = 255Kb = the maximum size supported by the original SUMP
-      // device...
-      final int maxSize = 0x3fffc;
+      final int maxSize = maxSize16Bits;
       size = ( ( stopCounter & maxSize ) << 14 ) | ( ( ( readCounter & maxSize ) >> 2 ) - 1 );
       // A better approximation of "(readCounter - stopCounter) - 2". This also
       // solves issue #31...
@@ -232,6 +239,17 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
 
     // set the capture size...
     sendCommand( SETSIZE, size );
+
+    // LAtimes - add enhanced messages for very large buffer sizes
+    // if more than 16 bits needed, send enhanced commands
+    if ( stopCounter > maxSize16Bits )
+    {
+      // set the capture size...
+      sendCommand( SETSAMPLESIZE, ( stopCounter >> 2 ) - 1 );
+
+      // set the delay size...
+      sendCommand( SETDELAYSIZE, ( readCounter >> 2 ) - 1 );
+    }
 
     int flags = 0;
     if ( this.config.isExternalClock() )

@@ -265,6 +265,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
   private JTextField remAddress;
   private JTextField remPort;
   private JComboBox numberSchemeSelect;
+  private JComboBox numChannels;  // LAtimes
   private JComboBox portSelect;
   private JComboBox portRateSelect;
   private JComboBox sourceSelect;
@@ -532,6 +533,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     this.numberSchemeSelect.setSelectedIndex( aSettings.getInt( "numberScheme",
         this.numberSchemeSelect.getSelectedIndex() ) );
     this.testModeEnable.setSelected( aSettings.getBoolean( "testMode", this.testModeEnable.isSelected() ) );
+    this.numChannels.setSelectedIndex( aSettings.getInt( "numChannels", this.numChannels.getSelectedIndex() ) );
     this.speedSelect.setSelectedIndex( aSettings.getInt( "speed", this.speedSelect.getSelectedIndex() ) );
     this.sizeSelect.setSelectedIndex( aSettings.getInt( "size", this.sizeSelect.getSelectedIndex() ) );
     this.maxSampleSize.setSelected( aSettings.getBoolean( "autosize", this.maxSampleSize.isSelected() ) );
@@ -614,6 +616,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     aSettings.putInt( "source", this.sourceSelect.getSelectedIndex() );
     aSettings.putInt( "numberScheme", this.numberSchemeSelect.getSelectedIndex() );
     aSettings.putBoolean( "testMode", this.testModeEnable.isSelected() );
+    aSettings.putInt( "numChannels", this.numChannels.getSelectedIndex() );
     aSettings.putInt( "speed", this.speedSelect.getSelectedIndex() );
     aSettings.putBoolean( "autosize", this.maxSampleSize.isSelected() );
     aSettings.putInt( "size", this.sizeSelect.getSelectedIndex() );
@@ -727,6 +730,12 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
       return;
     }
 
+    if ( this.deviceProfilePanel != null )
+    {
+      // Firmware command defined
+      this.deviceProfilePanel.loadFirmwareButton.setEnabled( !aProfile.getFirmwareCommand().isEmpty() );
+    }
+
     // Noise filter supported?
     updateCheckBoxState( this.filterEnable, aProfile.isNoiseFilterSupported() );
     // RLE supported?
@@ -746,12 +755,14 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
 
     // Update the capture speeds...
     updateCaptureSpeedComboBoxModel( this.speedSelect, aProfile );
-    // Update the capture sizes...
-    updateComboBoxModel( this.sizeSelect, aProfile.getCaptureSizes() );
+    // LAtimes - Update the capture sizes...
+    updateCaptureSizeComboBoxModel( this.sizeSelect, aProfile );
     // Update the capture clock sources...
     updateComboBoxModel( this.sourceSelect, aProfile.getCaptureClock() );
     // Update the numbering schemes...
     updateComboBoxModel( this.numberSchemeSelect, aProfile.getChannelNumberingSchemes() );
+    // LAtimes - Update the number of channels...
+    updateNumChannelsComboBoxModel( this.numChannels, aProfile );
   }
 
   /**
@@ -797,6 +808,8 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     final int triggerStages = this.deviceProfile != null ? this.deviceProfile.getTriggerStages() : 0;
     setTriggerEnabled( this.triggerEnable.isSelected(), triggerStages );
 
+    this.numChannels.setEnabled( this.deviceProfile != null && this.deviceProfile.isCaptureSizeBoundToEnabledChannelsLessThan8() );
+    
     this.speedSelect.setEnabled( this.sourceSelect.getSelectedItem() == CaptureClockSource.INTERNAL );
 
     this.sizeSelect.setEnabled( !this.maxSampleSize.isSelected() );
@@ -888,6 +901,10 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     connectionPane.add( createRightAlignedLabel( "Channel Groups" ) );
     connectionPane.add( this.groupsPanel );
 
+    // LAtimes
+    connectionPane.add( createRightAlignedLabel( "Number of Channels" ) );
+    connectionPane.add( this.numChannels );
+    
     connectionPane.add( createRightAlignedLabel( "Recording Size" ) );
     connectionPane.add( this.maxSampleSize );
     connectionPane.add( new JLabel() );
@@ -1060,17 +1077,18 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     return triggerPane;
   }
 
+  // LAtimes - add aNumChannels
   /**
    * Determines the maximum sample count that is supported by the OLS for a
-   * given number of channel groups.
+   * given number of channel groups and/or channels.
    * 
    * @return a maximum sample count, or -1 if no maximum could be determined.
    */
-  private int determineMaxSampleCount( final int aEnabledChannelGroups )
+  private int determineMaxSampleCount( final int aEnabledChannelGroups, final int aNumChannels )
   {
     if ( this.deviceProfile != null )
     {
-      return this.deviceProfile.getMaximumCaptureSizeFor( aEnabledChannelGroups );
+      return this.deviceProfile.getMaximumCaptureSizeFor( aEnabledChannelGroups, aNumChannels );
     }
 
     return -1;
@@ -1155,12 +1173,22 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     return enabledChannelGroups;
   }
 
+  // LAtimes - new function
+  /**
+   * @return
+   */
+  private int getNumChannels()
+  {
+    final String value = getComboBoxText( this.numChannels );
+    return NumberUtils.smartParseInt( value, UnitDefinition.SI, 8 );
+  }
+
   /**
    * @return
    */
   private int getSelectedSampleCount()
   {
-    int result = determineMaxSampleCount( getEnabledChannelGroups() );
+    int result = determineMaxSampleCount( getEnabledChannelGroups(), getNumChannels() );
 
     Integer sampleCount = getNumericValue( this.sizeSelect );
     if ( ( sampleCount != null ) && !this.maxSampleSize.isSelected() )
@@ -1260,6 +1288,10 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
       this.channelGroup[i].addActionListener( fieldUpdater );
       this.groupsPanel.add( this.channelGroup[i] );
     }
+
+    // LAtimes
+    this.numChannels = new JComboBox();
+    this.numChannels.addActionListener( fieldUpdater );
 
     this.sizeSelect = new JComboBox();
     this.sizeSelect.setRenderer( new BinarySizeComboBoxRenderer() );
@@ -1585,7 +1617,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     }
 
     final int enabledChannelGroups = getEnabledChannelGroups();
-    final int maxSampleCount = determineMaxSampleCount( enabledChannelGroups );
+    final int maxSampleCount = determineMaxSampleCount( enabledChannelGroups, getNumChannels() );
     final int sampleCount = getSelectedSampleCount();
 
     // Determine whether the chosen sample count is larger than the OLS can

@@ -111,7 +111,37 @@ final class ConfigDialogHelper
       // the beginning should be fine...
       sampleRates.add( 0, Integer.valueOf( 2 * aProfile.getClockspeed() ) );
     }
-    updateComboBoxModel( aComboBox, sampleRates );
+
+    // LAtimes - if default value is defined, set it
+    if ( aProfile.getDefaultSampleRate() != null )
+    {
+      updateComboBoxModel( aComboBox, aProfile.getDefaultSampleRate(), sampleRates );
+    }
+    else
+    {
+        updateComboBoxModel( aComboBox, sampleRates );
+    }    
+  }
+
+  // LAtimes - new function
+  /**
+   * @param <T>
+   * @param aComboBox
+   * @param aValues
+   */
+  static void updateCaptureSizeComboBoxModel( final JComboBox aComboBox, final DeviceProfile aProfile )
+  {
+    Vector<Integer> captureSizes = new Vector<Integer>( Arrays.asList( aProfile.getCaptureSizes() ) );
+
+    // if default value is defined, set it
+    if ( aProfile.getDefaultCaptureSize() != null )
+    {
+      updateComboBoxModel( aComboBox, aProfile.getDefaultCaptureSize(), captureSizes );
+    }
+    else
+    {
+        updateComboBoxModel( aComboBox, captureSizes );
+    }    
   }
 
   /**
@@ -162,6 +192,51 @@ final class ConfigDialogHelper
   static <T> void updateComboBoxModel( final JComboBox aComboBox, final Vector<T> aValues )
   {
     aComboBox.setModel( new DefaultComboBoxModel( aValues ) );
+  }
+
+  // LAtimes - add ability to set initial value
+  /**
+   * @param <T>
+   * @param aComboBox
+   * @param aValues
+   */
+  static <T> void updateComboBoxModel( final JComboBox aComboBox, final T defaultValue, final Vector<T> aValues )
+  {
+    DefaultComboBoxModel aModel = new DefaultComboBoxModel( aValues );
+    aModel.setSelectedItem( defaultValue );
+    aComboBox.setModel( aModel );
+  }
+
+  // LAtimes - new function
+  /**
+   * @param <T>
+   * @param aComboBox
+   * @param aValues
+   */
+  static void updateNumChannelsComboBoxModel( final JComboBox aComboBox, final DeviceProfile aProfile )
+  {
+    Vector<Integer> numChannelsList = new Vector<Integer>();
+    Integer channelCount = aProfile.getChannelCount();
+
+    aComboBox.setEnabled( aProfile.isCaptureSizeBoundToEnabledChannelsLessThan8() );
+    
+    // if more than 4, add the channelCount (5-8)
+    if ( channelCount > 4 )
+    {
+      numChannelsList.add( Math.max( 8, channelCount ));
+    }
+    // add 3 or 4, based on channelCount
+    if ( channelCount > 2 )
+    {
+    	numChannelsList.add( Math.min( 4, channelCount ));
+    }
+    if ( channelCount > 1 )
+    {
+    	numChannelsList.add( 2 );
+    }
+	numChannelsList.add( 1 );
+
+    updateComboBoxModel( aComboBox, numChannelsList );
   }
 
   /**

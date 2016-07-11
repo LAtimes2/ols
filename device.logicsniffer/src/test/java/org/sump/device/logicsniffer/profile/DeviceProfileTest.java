@@ -241,13 +241,13 @@ public class DeviceProfileTest
   @Test
   public void testGetMaximumCaptureSizeForOk()
   {
-    assertEquals( 24576, this.profile.getMaximumCaptureSizeFor( 1 ) );
-    assertEquals( 12288, this.profile.getMaximumCaptureSizeFor( 2 ) );
-    assertEquals( 6144, this.profile.getMaximumCaptureSizeFor( 3 ) );
-    assertEquals( 6144, this.profile.getMaximumCaptureSizeFor( 4 ) );
-    assertEquals( 4096, this.profile.getMaximumCaptureSizeFor( 5 ) );
-    assertEquals( 4096, this.profile.getMaximumCaptureSizeFor( 6 ) );
-    assertEquals( 3072, this.profile.getMaximumCaptureSizeFor( 7 ) );
+    assertEquals( 24576, this.profile.getMaximumCaptureSizeFor( 1, 8 ) );
+    assertEquals( 12288, this.profile.getMaximumCaptureSizeFor( 2, 8 ) );
+    assertEquals( 6144, this.profile.getMaximumCaptureSizeFor( 3, 8 ) );
+    assertEquals( 6144, this.profile.getMaximumCaptureSizeFor( 4, 8 ) );
+    assertEquals( 4096, this.profile.getMaximumCaptureSizeFor( 5, 8 ) );
+    assertEquals( 4096, this.profile.getMaximumCaptureSizeFor( 6, 8 ) );
+    assertEquals( 3072, this.profile.getMaximumCaptureSizeFor( 7, 8 ) );
   }
 
   /**
