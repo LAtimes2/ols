@@ -777,7 +777,8 @@ public final class LogicSnifferConfig
     {
       throw new IllegalArgumentException( "Sample count cannot be zero!" );
     }
-    this.size = aCount & 0xFFFFF;
+    // LAtimes - allow unlimited sample sizes
+    this.size = aCount;
   }
 
   /**

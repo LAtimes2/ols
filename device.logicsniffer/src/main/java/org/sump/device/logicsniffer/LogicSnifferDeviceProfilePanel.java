@@ -22,6 +22,7 @@ package org.sump.device.logicsniffer;
 
 
 import java.awt.*;
+import java.awt.Dialog.ModalityType;
 import java.awt.event.*;
 import java.io.*;
 import java.util.*;
@@ -29,10 +30,13 @@ import java.util.List;
 import java.util.logging.*;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.plaf.basic.*;
 
 import nl.lxtreme.ols.api.*;
 import nl.lxtreme.ols.api.devices.*;
+import nl.lxtreme.ols.util.HostInfo;
+import nl.lxtreme.ols.util.HostUtils;
 import nl.lxtreme.ols.util.swing.*;
 
 import org.sump.device.logicsniffer.profile.*;
@@ -249,11 +253,53 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
     }
   }
 
+  /**
+   * Provides an action to load firmware.
+   */
+  final class LoadFirmwareAction extends AbstractAction
+  {
+    // CONSTANTS
+
+    private static final long serialVersionUID = 1L;
+
+    // CONSTRUCTORS
+
+    /**
+     * Creates a new {@link ShowDeviceMetadataAction} instance.
+     */
+    public LoadFirmwareAction()
+    {
+      super( "Load Firmware" );
+      putValue( Action.LONG_DESCRIPTION, "Loads firmware if configuration defines a command" );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void actionPerformed( final ActionEvent aEvent )
+    {
+      setEnabled( false );
+
+      try
+      {
+        loadFirmware();
+      }
+      finally
+      {
+        setEnabled( true );
+      }
+    }
+  }
+
   // VARIABLES
 
   JButton showMetadataButton;
+  JButton loadFirmwareButton;
   private JComboBox deviceTypeSelect;
   private JEditorPane deviceTypeDetails;
+  private FirmwareDialog firmwareDialog;
+  private FirmwareLoader firmwareLoader;
 
   // CONSTANTS
 
@@ -298,6 +344,9 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
     aContainer.add( this.deviceTypeSelect );
 
     aContainer.add( new JLabel( "" ) );
+    aContainer.add( this.loadFirmwareButton );
+
+    aContainer.add( new JLabel( "" ) );
     aContainer.add( this.showMetadataButton );
 
     aContainer.add( new JLabel( "" ) );
@@ -329,6 +378,19 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
   public final void writePreferences( final UserSettings aSettings )
   {
     aSettings.put( "deviceType", String.valueOf( this.deviceTypeSelect.getSelectedItem() ) );
+  }
+
+  // LAtimes
+  final void loadFirmware()
+  {
+    DeviceProfile aProfile = this.device.getDeviceProfileManager().getProfile( String.valueOf( this.deviceTypeSelect.getSelectedItem() ) );
+    String command = aProfile.getFirmwareCommand();
+
+    System.out.println( "<Firmware command starting>" );
+
+    this.firmwareDialog.showDialog();
+    this.firmwareDialog.clearText();
+    this.firmwareLoader.start( command, firmwareDialog );
   }
 
   /**
@@ -365,11 +427,16 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
         {
           LOG.info( "No device profile obtained from metadata!" );
         }
-        // Update the selection of the combobox directly; causing everything
-        // to be synchronized nicely...
-        this.deviceTypeSelect.setSelectedItem( deviceProfile );
-        // Ensure it is updated immediately...
-        this.deviceTypeSelect.repaint();
+        
+        // LAtimes - only select profile if it is not currently selected
+        if ( this.deviceTypeSelect.getSelectedItem() != deviceProfile )
+        {
+          // Update the selection of the combobox directly; causing everything
+          // to be synchronized nicely...
+          this.deviceTypeSelect.setSelectedItem( deviceProfile );
+          // Ensure it is updated immediately...
+          this.deviceTypeSelect.repaint();
+        }
 
         details = getMetadataDetailsAsText( metadata );
       }
@@ -450,6 +517,10 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
   {
     this.showMetadataButton = new JButton( new ShowDeviceMetadataAction() );
 
+    // LAtimes - new button
+    this.loadFirmwareButton = new JButton( new LoadFirmwareAction() );
+    this.loadFirmwareButton.setEnabled( false );
+    
     this.deviceTypeDetails = new JEditorPane( "text/html", getEmtpyMetadataDetails() );
     this.deviceTypeDetails.setEditable( false );
     this.deviceTypeDetails.setEnabled( true );
@@ -477,5 +548,8 @@ public abstract class LogicSnifferDeviceProfilePanel implements Configurable
       // By default, select the "OLS" device, if available...
       this.deviceTypeSelect.setSelectedItem( defaultProfile );
     }
+    
+    this.firmwareDialog = new FirmwareDialog();
+    this.firmwareLoader = new FirmwareLoader();
   }
 }
