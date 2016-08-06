@@ -33,25 +33,6 @@
 	</build>
 	<profiles>
 		<profile>
-			<id>windowsPlatform</id>
-			<activation>
-				<os>
-					<family>windows</family>
-				</os>
-			</activation>
-			<dependencyManagement>
-				<dependencies>
-					<dependency>
-						<groupId>purejavacomm</groupId>
-						<artifactId>purejavacomm</artifactId>
-						<version>0.0.16</version>
-						<scope>system</scope>
-						<systemPath>${basedir}/purejavacomm-0.0.16.jar</systemPath>
-					</dependency>
-				</dependencies>
-			</dependencyManagement>
-		</profile>
-		<profile>
 			<activation>
 				<activeByDefault>true</activeByDefault>
 			</activation>
