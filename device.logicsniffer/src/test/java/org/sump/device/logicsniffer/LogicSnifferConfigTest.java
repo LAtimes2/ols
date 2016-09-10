@@ -254,7 +254,7 @@ public class LogicSnifferConfigTest
     assertEquals( 0xffff8, this.config.getSampleCount() );
 
     this.config.setSampleCount( Integer.MAX_VALUE );
-    assertEquals( 0xffff8, this.config.getSampleCount() );
+    assertEquals( 0x7ffffff8, this.config.getSampleCount() );
   }
 
   /**
@@ -279,7 +279,7 @@ public class LogicSnifferConfigTest
     assertEquals( 0xffffc, this.config.getSampleCount() );
 
     this.config.setSampleCount( Integer.MAX_VALUE );
-    assertEquals( 0xffffc, this.config.getSampleCount() );
+    assertEquals( 0x7ffffffc, this.config.getSampleCount() );
   }
 
   /**

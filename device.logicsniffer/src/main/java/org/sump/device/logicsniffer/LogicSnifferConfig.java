@@ -339,11 +339,11 @@ public final class LogicSnifferConfig
     {
       // When the multiplexer is turned on, the upper two channel blocks are
       // disabled, leaving only 16 channels for capturing...
-      samples = getReadCounter() & 0xffff8;
+      samples = getReadCounter() & 0xfffffff8;
     }
     else
     {
-      samples = getReadCounter() & 0xffffc;
+      samples = getReadCounter() & 0xfffffffc;
     }
 
     return samples;
