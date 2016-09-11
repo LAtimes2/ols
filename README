@@ -7,7 +7,7 @@ This version has some additional capabilities:
 2. Added commands for buffer sizes >256k
 3. Ability to select 1, 2, 4, or 8 channels and adjust buffer size accordingly
 
-For releases for Windows and Linux, go to <http://github.com/LAtimes2/old/releases/latest>
+For releases for Windows and Linux, go to <https://github.com/LAtimes2/ols/releases/latest>
 
 == Original notes ==
 
