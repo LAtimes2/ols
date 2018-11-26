@@ -242,7 +242,7 @@ public class SumpCommandWriter implements SumpProtocolConstants, Closeable
 
     // LAtimes - add enhanced messages for very large buffer sizes
     // if more than 16 bits needed, send enhanced commands
-    if ( stopCounter > maxSize16Bits )
+    if ( readCounter > maxSize16Bits )
     {
       // set the capture size...
       sendCommand( SETSAMPLESIZE, ( stopCounter >> 2 ) - 1 );
